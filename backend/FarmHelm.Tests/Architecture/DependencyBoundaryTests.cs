@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Xml.Linq;
+using FarmHelm.Domain.Farms;
 
 namespace FarmHelm.Tests.Architecture;
 
@@ -40,6 +41,22 @@ public sealed class DependencyBoundaryTests
             .ToArray();
 
         Assert.Equal(["FarmHelm.Application", "FarmHelm.Domain"], projectReferences);
+    }
+
+    [Fact]
+    public void DomainAssemblyDoesNotReferenceFrameworkOrInfrastructureAssemblies()
+    {
+        var references = typeof(Farm).Assembly
+            .GetReferencedAssemblies()
+            .Select(reference => reference.Name)
+            .Where(name => name is not null)
+            .ToArray();
+
+        Assert.DoesNotContain(references, name => name!.StartsWith("FarmHelm.", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Npgsql", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Microsoft.AspNetCore", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Microsoft.Extensions.Configuration", StringComparison.Ordinal));
     }
 
     private static string FindRepositoryRoot()
