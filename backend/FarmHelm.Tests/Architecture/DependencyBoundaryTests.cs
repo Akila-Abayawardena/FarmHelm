@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Xml.Linq;
 
 namespace FarmHelm.Tests.Architecture;
 
@@ -22,5 +23,35 @@ public sealed class DependencyBoundaryTests
         Assert.DoesNotContain(
             assembly.GetReferencedAssemblies(),
             reference => string.Equals(reference.Name, forbiddenAssemblyName, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void InfrastructureProjectReferencesApplicationAndDomain()
+    {
+        var projectFile = Path.Combine(
+            FindRepositoryRoot(),
+            "backend",
+            "FarmHelm.Infrastructure",
+            "FarmHelm.Infrastructure.csproj");
+        var projectReferences = XDocument.Load(projectFile)
+            .Descendants("ProjectReference")
+            .Select(reference => Path.GetFileNameWithoutExtension(reference.Attribute("Include")?.Value ?? string.Empty) ?? string.Empty)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(["FarmHelm.Application", "FarmHelm.Domain"], projectReferences);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "FarmHelm.sln")))
+            {
+                return directory.FullName;
+            }
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the FarmHelm repository root.");
     }
 }
