@@ -1,14 +1,20 @@
 using FarmHelm.Infrastructure;
+using FarmHelm.Api.Configuration;
+using FarmHelm.Api.ErrorHandling;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddUserSecrets<Program>(optional: true);
 
 builder.Services.AddControllers();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddAgriculturalCoreApplication();
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
@@ -32,3 +38,5 @@ app.MapGet("/health/database", async (FarmHelm.Infrastructure.Persistence.FarmHe
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;

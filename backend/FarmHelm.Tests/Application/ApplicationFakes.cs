@@ -63,8 +63,14 @@ internal sealed class UnitOfWorkFake : IUnitOfWork
 internal sealed class BusinessCodeGeneratorFake : IBusinessCodeGenerator
 {
     internal List<BusinessCodeType> Requested { get; } = [];
+    internal Exception? ExceptionToThrow { get; set; }
     public Task<string> GenerateAsync(BusinessCodeType codeType, CancellationToken cancellationToken = default)
     {
+        if (ExceptionToThrow is not null)
+        {
+            throw ExceptionToThrow;
+        }
+
         Requested.Add(codeType);
         return Task.FromResult(codeType switch { BusinessCodeType.Farm => "FARM-0001", BusinessCodeType.FarmLocation => "LOC-0001", BusinessCodeType.Crop => "CROP-0001", BusinessCodeType.Variety => "VAR-0001", BusinessCodeType.Batch => "BAT-0001", _ => throw new ArgumentOutOfRangeException(nameof(codeType)) });
     }
@@ -72,9 +78,11 @@ internal sealed class BusinessCodeGeneratorFake : IBusinessCodeGenerator
 internal sealed class BatchReadRepositoryFake : IBatchReadRepository
 {
     internal BatchDetails? Details { get; set; }
+    internal Dictionary<Guid, BatchDetails> DetailsById { get; } = [];
     internal IReadOnlyList<BatchSummary> Summaries { get; set; } = [];
     internal BatchListFilter? LastFilter { get; private set; }
-    public Task<BatchDetails?> GetDetailsByIdAsync(Guid batchId, CancellationToken cancellationToken = default) => Task.FromResult(Details);
+    public Task<BatchDetails?> GetDetailsByIdAsync(Guid batchId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(DetailsById.Count == 0 ? Details : DetailsById.GetValueOrDefault(batchId));
     public Task<IReadOnlyList<BatchSummary>> ListAsync(BatchListFilter filter, CancellationToken cancellationToken = default) { LastFilter = filter; return Task.FromResult(Summaries); }
 }
 internal static class ApplicationFixture
