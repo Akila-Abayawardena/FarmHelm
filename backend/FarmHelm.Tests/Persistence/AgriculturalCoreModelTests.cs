@@ -110,6 +110,24 @@ public sealed class AgriculturalCoreModelTests
         Assert.Single(context.ChangeTracker.Entries<BatchStageHistory>());
     }
 
+    [Theory]
+    [InlineData("farm_code_seq")]
+    [InlineData("farm_location_code_seq")]
+    [InlineData("crop_code_seq")]
+    [InlineData("variety_code_seq")]
+    [InlineData("batch_code_seq")]
+    public void BusinessCodeSequenceIsConfigured(string sequenceName)
+    {
+        using var context = CreateContext();
+
+        var sequence = Assert.Single(context.Model.GetSequences(), sequence => sequence.Name == sequenceName);
+
+        Assert.Equal(typeof(long), sequence.Type);
+        Assert.Equal(1, sequence.StartValue);
+        Assert.Equal(1, sequence.IncrementBy);
+        Assert.Null(sequence.Schema);
+    }
+
     private static FarmHelmDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<FarmHelmDbContext>()

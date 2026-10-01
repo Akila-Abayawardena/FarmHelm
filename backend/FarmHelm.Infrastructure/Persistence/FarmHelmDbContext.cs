@@ -21,5 +21,10 @@ public sealed class FarmHelmDbContext(DbContextOptions<FarmHelmDbContext> option
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FarmHelmDbContext).Assembly);
+        modelBuilder.HasSequence<long>("farm_code_seq").StartsAt(1).IncrementsBy(1);
+        modelBuilder.HasSequence<long>("farm_location_code_seq").StartsAt(1).IncrementsBy(1);
+        modelBuilder.HasSequence<long>("crop_code_seq").StartsAt(1).IncrementsBy(1);
+        modelBuilder.HasSequence<long>("variety_code_seq").StartsAt(1).IncrementsBy(1);
+        modelBuilder.HasSequence<long>("batch_code_seq").StartsAt(1).IncrementsBy(1);
     }
 }

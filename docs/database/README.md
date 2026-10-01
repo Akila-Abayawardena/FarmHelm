@@ -34,3 +34,13 @@ EF Core migrations will manage schema evolution.
 - Generate migrations through the Infrastructure project with the Api project as the startup project.
 - Migrations are source controlled and must be reviewed before they are applied.
 - `InitialAgriculturalCore` has been validated against the local PostgreSQL development database.
+
+## Business Code Sequences
+
+- The `AddBusinessCodeSequences` migration adds PostgreSQL sequences for human-readable business codes.
+- Sequences are `farm_code_seq`, `farm_location_code_seq`, `crop_code_seq`, `variety_code_seq`, and `batch_code_seq`.
+- Their respective prefixes are `FARM`, `LOC`, `CROP`, `VAR`, and `BAT`.
+- PostgreSQL sequence allocation is concurrency-safe and produces monotonically allocated values within each category.
+- Business codes are not guaranteed to be gapless: failed or rolled-back operations may consume a sequence value.
+- UUIDs remain entity primary keys; business codes are separate display and business identifiers.
+- `AddBusinessCodeSequences` has been validated and applied to the local development database.
