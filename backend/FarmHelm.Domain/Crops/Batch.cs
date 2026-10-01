@@ -8,6 +8,11 @@ public sealed class Batch
     private readonly List<MortalityRecord> _mortalityRecords = [];
     private readonly List<BatchStageHistory> _stageHistory = [];
 
+    // EF Core uses this constructor to materialize persisted state without recreating aggregate children.
+    private Batch()
+    {
+    }
+
     private Batch(
         Guid id,
         string batchCode,
@@ -18,7 +23,8 @@ public sealed class Batch
         int initialPlantCount,
         Guid currentStageId,
         bool individualTrackingEnabled,
-        string? notes)
+        string? notes,
+        bool initializeAggregate)
     {
         Id = DomainGuard.Required(id, nameof(id));
         BatchCode = DomainGuard.RequiredText(batchCode, nameof(batchCode));
@@ -33,6 +39,11 @@ public sealed class Batch
         IndividualTrackingEnabled = individualTrackingEnabled;
         Notes = DomainGuard.OptionalText(notes);
         Status = BatchStatus.Active;
+
+        if (!initializeAggregate)
+        {
+            return;
+        }
 
         _stageHistory.Add(new BatchStageHistory(Guid.NewGuid(), Id, CurrentStageId, PlantingDate, null));
 
@@ -49,16 +60,16 @@ public sealed class Batch
         }
     }
 
-    public Guid Id { get; }
-    public string BatchCode { get; }
-    public Guid FarmId { get; }
-    public Guid VarietyId { get; }
-    public Guid? LocationId { get; }
-    public DateOnly PlantingDate { get; }
-    public int InitialPlantCount { get; }
+    public Guid Id { get; private set; }
+    public string BatchCode { get; private set; } = null!;
+    public Guid FarmId { get; private set; }
+    public Guid VarietyId { get; private set; }
+    public Guid? LocationId { get; private set; }
+    public DateOnly PlantingDate { get; private set; }
+    public int InitialPlantCount { get; private set; }
     public Guid CurrentStageId { get; private set; }
     public BatchStatus Status { get; private set; }
-    public bool IndividualTrackingEnabled { get; }
+    public bool IndividualTrackingEnabled { get; private set; }
     public DateOnly? RemovedDate { get; private set; }
     public string? Notes { get; private set; }
     public IReadOnlyList<Plant> Plants => _plants.AsReadOnly();
@@ -89,7 +100,8 @@ public sealed class Batch
             initialPlantCount,
             currentStageId,
             individualTrackingEnabled,
-            notes);
+            notes,
+            initializeAggregate: true);
 
     public void UpdateNotes(string? notes) => Notes = DomainGuard.OptionalText(notes);
 

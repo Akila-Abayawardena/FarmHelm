@@ -25,4 +25,12 @@ dotnet user-secrets set `
   --project .\backend\FarmHelm.Api\FarmHelm.Api.csproj
 ```
 
-EF Core migrations will manage schema evolution. No business tables exist yet at this stage.
+EF Core migrations will manage schema evolution.
+
+## Agricultural Core Migration
+
+- The first Agricultural Core migration is named `InitialAgriculturalCore`.
+- Migration source files live in `backend/FarmHelm.Infrastructure/Persistence/Migrations`.
+- Generate migrations through the Infrastructure project with the Api project as the startup project.
+- Migrations are source controlled and must be reviewed before they are applied.
+- `InitialAgriculturalCore` has been validated against the local PostgreSQL development database.
