@@ -1,5 +1,10 @@
 using System.Reflection;
 using System.Xml.Linq;
+using FarmHelm.Api.Controllers;
+using FarmHelm.Application.Farms.CreateFarm;
+using FarmHelm.Domain.Farms;
+using FarmHelm.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FarmHelm.Tests.Architecture;
 
@@ -40,6 +45,70 @@ public sealed class DependencyBoundaryTests
             .ToArray();
 
         Assert.Equal(["FarmHelm.Application", "FarmHelm.Domain"], projectReferences);
+    }
+
+    [Fact]
+    public void ApplicationProjectReferencesDomainOnlyAndHasNoPersistenceDependencies()
+    {
+        var projectFile = Path.Combine(
+            FindRepositoryRoot(),
+            "backend",
+            "FarmHelm.Application",
+            "FarmHelm.Application.csproj");
+        var projectReferences = XDocument.Load(projectFile)
+            .Descendants("ProjectReference")
+            .Select(reference => Path.GetFileNameWithoutExtension(reference.Attribute("Include")?.Value ?? string.Empty) ?? string.Empty)
+            .ToArray();
+        var references = typeof(CreateFarmHandler).Assembly
+            .GetReferencedAssemblies()
+            .Select(reference => reference.Name)
+            .Where(name => name is not null)
+            .ToArray();
+
+        Assert.Equal(["FarmHelm.Domain"], projectReferences);
+        Assert.DoesNotContain(references, name => name!.StartsWith("FarmHelm.Infrastructure", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("FarmHelm.Api", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Npgsql", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Microsoft.AspNetCore", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Microsoft.Extensions.Configuration", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void DomainAssemblyDoesNotReferenceFrameworkOrInfrastructureAssemblies()
+    {
+        var references = typeof(Farm).Assembly
+            .GetReferencedAssemblies()
+            .Select(reference => reference.Name)
+            .Where(name => name is not null)
+            .ToArray();
+
+        Assert.DoesNotContain(references, name => name!.StartsWith("FarmHelm.", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Npgsql", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Microsoft.AspNetCore", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name!.StartsWith("Microsoft.Extensions.Configuration", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AgriculturalCoreControllersDoNotInjectPersistenceServices()
+    {
+        var controllers = typeof(FarmsController).Assembly
+            .GetTypes()
+            .Where(type => !type.IsAbstract && typeof(ControllerBase).IsAssignableFrom(type));
+
+        foreach (var controller in controllers)
+        {
+            var constructorParameters = controller
+                .GetConstructors()
+                .SelectMany(constructor => constructor.GetParameters());
+
+            Assert.DoesNotContain(
+                constructorParameters,
+                parameter => parameter.ParameterType == typeof(FarmHelmDbContext)
+                    || parameter.ParameterType.Namespace?.StartsWith("FarmHelm.Application.Abstractions.Persistence", StringComparison.Ordinal) == true
+                    || parameter.ParameterType.Namespace?.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal) == true);
+        }
     }
 
     private static string FindRepositoryRoot()
