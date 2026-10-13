@@ -5,6 +5,7 @@ import { vi } from 'vitest'
 import { routes } from './router'
 
 vi.mock('../api/health/healthApi', () => ({ getHealth: vi.fn(() => new Promise(() => undefined)) }))
+vi.mock('../api/batches/batchApi', () => ({ listBatches: vi.fn(async () => []), getBatchDetails: vi.fn() }))
 
 function renderRoute(path: string) {
   return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />)
