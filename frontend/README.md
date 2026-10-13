@@ -20,3 +20,7 @@ The Agricultural Core MVP provides first-run Farm setup, locations, mortality re
 Treatments and tasks, inventory and purchasing, harvest and sales, finance and assets, reports, calendar/search, authentication, and Tauri desktop integration are future scope.
 
 Frontend environment variables are browser-visible. Never put database credentials, private tokens, or other secrets in frontend environment files. See `.env.example`.
+
+## Windows desktop (Tauri)
+
+On a configured Windows 11 development/demo machine, run `npm run desktop:dev` to bundle the React UI and start FarmHelm.Api as a self-contained loopback sidecar on `127.0.0.1:5223`. Run `npm run desktop:build` to create the unsigned NSIS package. PostgreSQL is not bundled: the PostgreSQL service, FarmHelm database, and existing ASP.NET User Secret connection string remain prerequisites. Browser development (`npm run dev` plus the API at port 5222) remains supported separately.

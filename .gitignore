@@ -31,6 +31,8 @@ pnpm-debug.log*
 
 # Rust / Cargo / Tauri
 target/
+frontend/src-tauri/binaries/*.exe
+frontend/src-tauri/binaries/*.pdb
 
 # Environment and secrets
 .env

@@ -7,8 +7,13 @@ export default defineConfig(({ mode }) => {
   const backendTarget = environment.FARMHELM_BACKEND_PROXY_TARGET?.trim() || 'http://localhost:5222'
 
   return {
+    envPrefix: ['VITE_', 'TAURI_'],
     plugins: [react()],
     server: {
+      port: 5173,
+      strictPort: true,
+      clearScreen: false,
+      watch: { ignored: ['**/src-tauri/**'] },
       proxy: {
         '/api': { target: backendTarget, changeOrigin: true },
         '/health': { target: backendTarget, changeOrigin: true },

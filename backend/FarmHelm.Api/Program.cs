@@ -9,12 +9,17 @@ builder.Configuration.AddUserSecrets<Program>(optional: true);
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
+builder.Services.AddCors(options => options.AddPolicy("DesktopLocal", policy => policy
+    .WithOrigins("http://tauri.localhost", "http://localhost:5173", "http://127.0.0.1:5173")
+    .AllowAnyMethod()
+    .AllowAnyHeader()));
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAgriculturalCoreApplication();
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
+app.UseCors("DesktopLocal");
 app.UseHttpsRedirection();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
