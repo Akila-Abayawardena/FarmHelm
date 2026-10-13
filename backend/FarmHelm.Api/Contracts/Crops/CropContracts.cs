@@ -7,9 +7,11 @@ public sealed record CreateVarietyRequest(
     string? Description = null);
 
 public sealed record VarietyResponse(Guid VarietyId, string VarietyCode, Guid CropId, string Name);
+public sealed record VarietyReadResponse(Guid Id, Guid CropId, string VarietyCode, string Name, string? Description, bool IsActive);
 
 public sealed record CreateCropStageRequest(
     [param: Required, StringLength(100)] string Name,
     [param: Range(0, int.MaxValue)] int DisplayOrder);
 
 public sealed record CropStageResponse(Guid CropStageId, Guid CropId, string Name, int DisplayOrder);
+public sealed record CropStageReadResponse(Guid Id, Guid CropId, string Name, int DisplayOrder, bool IsActive);

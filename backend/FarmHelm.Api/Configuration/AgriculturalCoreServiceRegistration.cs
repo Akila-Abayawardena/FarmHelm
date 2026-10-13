@@ -11,6 +11,12 @@ using FarmHelm.Application.Crops.CreateMortalityReason;
 using FarmHelm.Application.Crops.CreateVariety;
 using FarmHelm.Application.Farms.CreateFarm;
 using FarmHelm.Application.Farms.CreateFarmLocation;
+using FarmHelm.Application.MasterData.ListCrops;
+using FarmHelm.Application.MasterData.ListCropStages;
+using FarmHelm.Application.MasterData.ListFarmLocations;
+using FarmHelm.Application.MasterData.ListFarms;
+using FarmHelm.Application.MasterData.ListMortalityReasons;
+using FarmHelm.Application.MasterData.ListVarieties;
 
 namespace FarmHelm.Api.Configuration;
 
@@ -31,6 +37,12 @@ public static class AgriculturalCoreServiceRegistration
         services.AddScoped<RemoveBatchHandler>();
         services.AddScoped<GetBatchDetailsHandler>();
         services.AddScoped<ListBatchesHandler>();
+        services.AddScoped<ListFarmsHandler>();
+        services.AddScoped<ListFarmLocationsHandler>();
+        services.AddScoped<ListCropsHandler>();
+        services.AddScoped<ListVarietiesHandler>();
+        services.AddScoped<ListCropStagesHandler>();
+        services.AddScoped<ListMortalityReasonsHandler>();
 
         return services;
     }

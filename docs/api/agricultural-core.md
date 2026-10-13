@@ -5,11 +5,17 @@ This document describes the first HTTP boundary for FarmHelm's Agricultural Core
 | Method | Route | Success |
 | --- | --- | --- |
 | POST | `/api/farms` | 201 Created |
+| GET | `/api/farms` | 200 OK |
 | POST | `/api/farms/{farmId}/locations` | 201 Created |
+| GET | `/api/farms/{farmId}/locations?includeInactive=` | 200 OK |
 | POST | `/api/farms/{farmId}/crops` | 201 Created |
+| GET | `/api/farms/{farmId}/crops?includeInactive=` | 200 OK |
 | POST | `/api/farms/{farmId}/mortality-reasons` | 201 Created |
+| GET | `/api/farms/{farmId}/mortality-reasons?includeInactive=` | 200 OK |
 | POST | `/api/crops/{cropId}/varieties` | 201 Created |
+| GET | `/api/crops/{cropId}/varieties?includeInactive=` | 200 OK |
 | POST | `/api/crops/{cropId}/stages` | 201 Created |
+| GET | `/api/crops/{cropId}/stages?includeInactive=` | 200 OK |
 | POST | `/api/batches` | 201 Created |
 | POST | `/api/batches/{batchId}/mortality` | 200 OK |
 | POST | `/api/batches/{batchId}/plants/{plantId}/mortality` | 200 OK |
@@ -20,6 +26,12 @@ This document describes the first HTTP boundary for FarmHelm's Agricultural Core
 
 `status` accepts `Active` or `Removed`. Batch removal is a historical lifecycle action, not a delete endpoint.
 Batch creation returns a normal 201 response body; it intentionally does not use an MVC generated-location route.
+
+## Master-data reads
+
+The master-data GET routes are read-only and provide small configuration collections for future selectors and Settings screens. They use deterministic ordering: Farms, locations, crops, and varieties order by name then business code; stages and mortality reasons order by display order then name.
+
+Farms currently have no activation status. For FarmLocation, Crop, Variety, CropStage, and MortalityReason lists, `includeInactive` defaults to `false` and returns active records only. Set `includeInactive=true` to include inactive records. A missing nested Farm or Crop returns 404; an existing parent with no matching children returns 200 with `[]`.
 
 ## Errors and validation
 

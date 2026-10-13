@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IMortalityReasonRepository, MortalityReasonRepository>();
         services.AddScoped<IBatchRepository, BatchRepository>();
         services.AddScoped<IBatchReadRepository, BatchReadRepository>();
+        services.AddScoped<IAgriculturalMasterDataReadRepository, AgriculturalMasterDataReadRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IBusinessCodeGenerator, PostgreSqlBusinessCodeGenerator>();
 

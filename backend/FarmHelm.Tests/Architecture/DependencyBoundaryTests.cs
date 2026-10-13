@@ -107,7 +107,8 @@ public sealed class DependencyBoundaryTests
                 constructorParameters,
                 parameter => parameter.ParameterType == typeof(FarmHelmDbContext)
                     || parameter.ParameterType.Namespace?.StartsWith("FarmHelm.Application.Abstractions.Persistence", StringComparison.Ordinal) == true
-                    || parameter.ParameterType.Namespace?.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal) == true);
+                    || parameter.ParameterType.Namespace?.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal) == true
+                    || parameter.ParameterType.Namespace?.StartsWith("Npgsql", StringComparison.Ordinal) == true);
         }
     }
 

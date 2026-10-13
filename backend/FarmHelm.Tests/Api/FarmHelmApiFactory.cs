@@ -23,6 +23,7 @@ internal sealed class FarmHelmApiFactory : WebApplicationFactory<Program>
     internal MortalityReasonRepositoryFake Reasons { get; } = new();
     internal BatchRepositoryFake Batches { get; } = new();
     internal BatchReadRepositoryFake BatchReads { get; } = new();
+    internal AgriculturalMasterDataReadRepositoryFake MasterDataReads { get; } = new();
     internal UnitOfWorkFake UnitOfWork { get; } = new();
     internal BusinessCodeGeneratorFake Codes { get; } = new();
 
@@ -44,6 +45,7 @@ internal sealed class FarmHelmApiFactory : WebApplicationFactory<Program>
             Replace<IMortalityReasonRepository>(services, Reasons);
             Replace<IBatchRepository>(services, Batches);
             Replace<IBatchReadRepository>(services, BatchReads);
+            Replace<IAgriculturalMasterDataReadRepository>(services, MasterDataReads);
             Replace<IUnitOfWork>(services, UnitOfWork);
             Replace<IBusinessCodeGenerator>(services, Codes);
         });

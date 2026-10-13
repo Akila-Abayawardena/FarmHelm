@@ -1,6 +1,7 @@
 using FarmHelm.Application.Abstractions.Codes;
 using FarmHelm.Application.Abstractions.Persistence;
 using FarmHelm.Application.Batches;
+using FarmHelm.Application.MasterData;
 using FarmHelm.Domain.Crops;
 using FarmHelm.Domain.Farms;
 
@@ -84,6 +85,28 @@ internal sealed class BatchReadRepositoryFake : IBatchReadRepository
     public Task<BatchDetails?> GetDetailsByIdAsync(Guid batchId, CancellationToken cancellationToken = default) =>
         Task.FromResult(DetailsById.Count == 0 ? Details : DetailsById.GetValueOrDefault(batchId));
     public Task<IReadOnlyList<BatchSummary>> ListAsync(BatchListFilter filter, CancellationToken cancellationToken = default) { LastFilter = filter; return Task.FromResult(Summaries); }
+}
+internal sealed class AgriculturalMasterDataReadRepositoryFake : IAgriculturalMasterDataReadRepository
+{
+    internal HashSet<Guid> FarmIds { get; } = [];
+    internal HashSet<Guid> CropIds { get; } = [];
+    internal IReadOnlyList<FarmReadModel> Farms { get; set; } = [];
+    internal IReadOnlyList<FarmLocationReadModel> Locations { get; set; } = [];
+    internal IReadOnlyList<CropReadModel> Crops { get; set; } = [];
+    internal IReadOnlyList<VarietyReadModel> Varieties { get; set; } = [];
+    internal IReadOnlyList<CropStageReadModel> Stages { get; set; } = [];
+    internal IReadOnlyList<MortalityReasonReadModel> Reasons { get; set; } = [];
+    internal (Guid ParentId, bool IncludeInactive)? LastFarmScopedRequest { get; private set; }
+    internal (Guid ParentId, bool IncludeInactive)? LastCropScopedRequest { get; private set; }
+
+    public Task<bool> FarmExistsAsync(Guid farmId, CancellationToken cancellationToken = default) => Task.FromResult(FarmIds.Contains(farmId));
+    public Task<bool> CropExistsAsync(Guid cropId, CancellationToken cancellationToken = default) => Task.FromResult(CropIds.Contains(cropId));
+    public Task<IReadOnlyList<FarmReadModel>> ListFarmsAsync(CancellationToken cancellationToken = default) => Task.FromResult(Farms);
+    public Task<IReadOnlyList<FarmLocationReadModel>> ListFarmLocationsAsync(Guid farmId, bool includeInactive, CancellationToken cancellationToken = default) { LastFarmScopedRequest = (farmId, includeInactive); return Task.FromResult(Locations); }
+    public Task<IReadOnlyList<CropReadModel>> ListCropsAsync(Guid farmId, bool includeInactive, CancellationToken cancellationToken = default) { LastFarmScopedRequest = (farmId, includeInactive); return Task.FromResult(Crops); }
+    public Task<IReadOnlyList<VarietyReadModel>> ListVarietiesAsync(Guid cropId, bool includeInactive, CancellationToken cancellationToken = default) { LastCropScopedRequest = (cropId, includeInactive); return Task.FromResult(Varieties); }
+    public Task<IReadOnlyList<CropStageReadModel>> ListCropStagesAsync(Guid cropId, bool includeInactive, CancellationToken cancellationToken = default) { LastCropScopedRequest = (cropId, includeInactive); return Task.FromResult(Stages); }
+    public Task<IReadOnlyList<MortalityReasonReadModel>> ListMortalityReasonsAsync(Guid farmId, bool includeInactive, CancellationToken cancellationToken = default) { LastFarmScopedRequest = (farmId, includeInactive); return Task.FromResult(Reasons); }
 }
 internal static class ApplicationFixture
 {
