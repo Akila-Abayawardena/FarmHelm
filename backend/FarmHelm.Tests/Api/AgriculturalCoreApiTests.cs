@@ -25,6 +25,20 @@ public sealed class AgriculturalCoreApiTests
     }
 
     [Fact]
+    public async Task TauriOriginCanCallHealthEndpoint()
+    {
+        using var factory = new FarmHelmApiFactory();
+        using var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/health");
+        request.Headers.Add("Origin", "http://tauri.localhost");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("http://tauri.localhost", response.Headers.GetValues("Access-Control-Allow-Origin").Single());
+    }
+
+    [Fact]
     public async Task CreateFarmReturnsApiContractAndApplicationDefaults()
     {
         using var factory = new FarmHelmApiFactory();
