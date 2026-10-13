@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { listBatches } from '../../api/batches/batchApi'
 import type { BatchStatus, BatchSummary } from '../../api/batches/batchTypes'
 import { ApiError } from '../../api/http/ApiError'
@@ -44,7 +44,7 @@ export function BatchesPage() {
 
   return (
     <section className="page" aria-labelledby="batches-title">
-      <p className="eyebrow">Agricultural core</p><h1 id="batches-title">Batches</h1>
+      <p className="eyebrow">Agricultural core</p><div className="page-title-row"><h1 id="batches-title">Batches</h1><Link className="button button-primary" to="/batches/new">Create batch</Link></div>
       <p className="page-description">Review recorded batches and their production lifecycle.</p>
       <BatchStatusFilter value={status} onChange={changeStatus} />
       {batches === undefined && error === undefined && <p className="batch-state" role="status">Loading batches…</p>}

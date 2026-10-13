@@ -34,6 +34,6 @@ describe('BatchDetailsPage', () => {
     fetchMock.mockRejectedValueOnce(new Error('Offline')).mockResolvedValueOnce(response(batchDetails)); vi.stubGlobal('fetch', fetchMock)
     renderPage(); expect(await screen.findByRole('button', { name: 'Retry' })).toBeInTheDocument()
     await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }))
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5))
   })
 })

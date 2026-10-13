@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import { AppShell } from '../components/layout/AppShell'
 import { BatchesPage } from '../features/batches/BatchesPage'
 import { BatchDetailsPage } from '../features/batches/BatchDetailsPage'
+import { BatchCreatePage } from '../features/batches/BatchCreatePage'
 import { CropsPage } from '../features/crops/CropsPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { FarmsPage } from '../features/farms/FarmsPage'
@@ -18,6 +19,7 @@ export const routes: RouteObject[] = [
       { path: 'farms', element: <FarmsPage /> },
       { path: 'crops', element: <CropsPage /> },
       { path: 'batches', element: <BatchesPage /> },
+      { path: 'batches/new', element: <BatchCreatePage /> },
       { path: 'batches/:batchId', element: <BatchDetailsPage /> },
       { path: 'settings', element: <SettingsPage /> },
     ],

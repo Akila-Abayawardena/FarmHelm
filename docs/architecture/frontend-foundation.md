@@ -4,4 +4,4 @@ FarmHelm's browser frontend uses React, TypeScript, Vite, React Router, a native
 
 The frontend must not contain farm business rules; frontend validation may improve UX but the backend remains authoritative. Tauri integration is planned later and is not implemented here.
 
-The Batch read slice follows the same boundary: its feature page calls an API module, which uses the shared native-fetch transport and frontend-owned contract types. It currently exposes only the Batch status filter because Farm, Crop, and Variety selectors need future master-data read APIs.
+The Agricultural Core MVP follows the same boundary: feature pages call small API modules, which use the shared native-fetch transport and frontend-owned contract types. Master-data selectors load dependent records only after their parent Farm or Crop is selected. Client validation is limited to basic required fields and quantities; ownership, active-state, and lifecycle rules remain backend-authoritative.

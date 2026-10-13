@@ -44,5 +44,8 @@ export const apiClient = {
   get<T>(path: string, options?: Omit<ApiRequestOptions, 'body' | 'method'>) {
     return request<T>(path, { ...options, method: 'GET' })
   },
+  post<TResponse, TBody>(path: string, body: TBody, options?: Omit<ApiRequestOptions, 'body' | 'method'>) {
+    return request<TResponse>(path, { ...options, method: 'POST', body })
+  },
   request,
 }

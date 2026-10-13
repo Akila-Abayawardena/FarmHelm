@@ -15,6 +15,8 @@ npm test
 
 Vite proxies `/api` and `/health` to `http://localhost:5222` during development; override this safe local target with `FARMHELM_BACKEND_PROXY_TARGET`. `VITE_API_ORIGIN` is available for a future alternate origin. Tauri and authentication are not implemented yet.
 
-The first read feature provides a Batch list, Active/Removed status filter, and Batch details. Farm, Crop, and Variety selectors await reusable backend master-data read APIs; no write operations are implemented in this frontend yet.
+The Agricultural Core MVP provides first-run Farm setup, locations, mortality reasons, Crop/Variety/Stage setup, Batch creation, Batch list/details, and lifecycle actions for mortality, stage changes, and historical removal. It uses the backend master-data read APIs for dependent selectors; Farm/Crop/Variety filters remain intentionally deferred from the Batch list.
+
+Treatments and tasks, inventory and purchasing, harvest and sales, finance and assets, reports, calendar/search, authentication, and Tauri desktop integration are future scope.
 
 Frontend environment variables are browser-visible. Never put database credentials, private tokens, or other secrets in frontend environment files. See `.env.example`.

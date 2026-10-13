@@ -69,3 +69,10 @@ export interface BatchListFilter {
   varietyId?: string
   status?: BatchStatus
 }
+
+export interface CreateBatchInput { farmId: string; varietyId: string; locationId: string | null; plantingDate: string; initialPlantCount: number; initialStageId: string; individualTrackingEnabled: boolean; notes?: string }
+export interface CreatedBatch { batchId: string; batchCode: string; initialPlantCount: number; individualTrackingEnabled: boolean }
+export interface RecordBatchMortalityInput { mortalityDate: string; quantity: number; mortalityReasonId: string; notes?: string }
+export interface RecordPlantMortalityInput { mortalityDate: string; mortalityReasonId: string; notes?: string }
+export interface ChangeBatchStageInput { stageId: string; effectiveDate: string; notes?: string }
+export interface RemoveBatchInput { removedDate: string }
