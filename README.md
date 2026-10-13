@@ -48,6 +48,10 @@ The following areas are planned, not completed:
 - Entity Framework Core
 - PostgreSQL
 
+## Development Setup
+
+The React + TypeScript + Vite frontend lives in `frontend/`. During development, start the ASP.NET Core API and run `npm install` then `npm run dev` from `frontend/`; Vite proxies API and health requests to the local backend. Tauri desktop integration is planned but not implemented yet.
+
 ## Development Principles
 
 - Local-first
