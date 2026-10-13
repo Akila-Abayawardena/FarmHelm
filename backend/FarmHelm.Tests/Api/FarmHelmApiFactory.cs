@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 namespace FarmHelm.Tests.Api;
 
@@ -27,14 +28,19 @@ internal sealed class FarmHelmApiFactory : WebApplicationFactory<Program>
     internal UnitOfWorkFake UnitOfWork { get; } = new();
     internal BusinessCodeGeneratorFake Codes { get; } = new();
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    protected override IHost CreateHost(IHostBuilder builder)
     {
-        builder.ConfigureAppConfiguration(configuration =>
+        builder.ConfigureHostConfiguration(configuration =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:FarmHelmDatabase"] = "Host=example.invalid;Database=farmhelm_api_test"
             }));
 
+        return base.CreateHost(builder);
+    }
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
         builder.ConfigureTestServices(services =>
         {
             Replace<IFarmRepository>(services, Farms);
