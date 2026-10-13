@@ -12,4 +12,4 @@ Tauri is the desktop application shell.
 
 ## Consequences
 
-The React user interface and local backend will be hosted through a Tauri desktop application.
+Tauri bundles the React user interface and hosts the local desktop application. The ASP.NET Core API runs as a self-contained sidecar managed by Tauri, while PostgreSQL remains an external local service.
