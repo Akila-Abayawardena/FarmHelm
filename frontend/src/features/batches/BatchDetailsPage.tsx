@@ -1,90 +1,60 @@
-import { useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getBatchDetails } from '../../api/batches/batchApi'
+import { changeBatchStage, getBatchDetails, recordBatchMortality, recordPlantMortality, removeBatch } from '../../api/batches/batchApi'
 import type { BatchDetails } from '../../api/batches/batchTypes'
 import { ApiError } from '../../api/http/ApiError'
+import { masterDataApi } from '../../api/masterData/masterDataApi'
+import type { CropStage, MortalityReason } from '../../api/masterData/masterDataTypes'
+import { FormError } from '../../components/feedback/FormError'
+import { errorMessage } from '../../components/feedback/errorMessage'
 import { BatchErrorState } from './components/BatchErrorState'
 import { formatDateOnly, formatSurvivalRate } from './formatting'
 
 const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const today = () => { const value = new Date(); return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}` }
+function DetailRow({ label, children }: { label: string, children: React.ReactNode }) { return <div><dt>{label}</dt><dd>{children}</dd></div> }
+function DetailSection({ title, children }: { title: string, children: React.ReactNode }) { return <section className="batch-details-section"><h2>{title}</h2>{children}</section> }
+function date(value: string | null): React.ReactNode { return value ? <time dateTime={value}>{formatDateOnly(value)}</time> : 'Not recorded' }
 
-function DetailRow({ label, children }: { label: string, children: React.ReactNode }) {
-  return <div><dt>{label}</dt><dd>{children}</dd></div>
+function BatchActions({ batch, onChanged }: { batch: BatchDetails, onChanged: () => void }) {
+  const [stages, setStages] = useState<CropStage[]>([]); const [reasons, setReasons] = useState<MortalityReason[]>([])
+  const [actionError, setActionError] = useState<string>(); const [submitting, setSubmitting] = useState('')
+  const [stageForm, setStageForm] = useState({ stageId: '', effectiveDate: today(), notes: '' })
+  const [batchMortality, setBatchMortality] = useState({ mortalityDate: today(), quantity: 1, mortalityReasonId: '', notes: '' })
+  const [plantMortality, setPlantMortality] = useState({ mortalityDate: today(), plantId: '', mortalityReasonId: '', notes: '' }); const [removedDate, setRemovedDate] = useState(today())
+  const availableStages = stages.filter((stage) => stage.id !== batch.currentStageId); const activePlants = batch.plants.filter((plant) => plant.status === 'Active')
+  useEffect(() => { const controller = new AbortController(); void Promise.all([masterDataApi.listCropStages(batch.cropId, false, controller.signal), masterDataApi.listMortalityReasons(batch.farmId, false, controller.signal)]).then(([nextStages, nextReasons]) => { setStages(nextStages); setReasons(nextReasons); setStageForm((form) => ({ ...form, stageId: nextStages.find((stage) => stage.id !== batch.currentStageId)?.id ?? '' })); setBatchMortality((form) => ({ ...form, mortalityReasonId: nextReasons[0]?.id ?? '' })); setPlantMortality((form) => ({ ...form, plantId: batch.plants.find((plant) => plant.status === 'Active')?.plantId ?? '', mortalityReasonId: nextReasons[0]?.id ?? '' })) }).catch((requestError) => { if (!controller.signal.aborted) setActionError(errorMessage(requestError)) }); return () => controller.abort() }, [batch.batchId, batch.cropId, batch.farmId, batch.currentStageId, batch.plants])
+  async function perform(action: string, operation: () => Promise<unknown>) { setSubmitting(action); setActionError(undefined); try { await operation(); onChanged() } catch (requestError) { setActionError(errorMessage(requestError)) } finally { setSubmitting('') } }
+  function stageChange(event: FormEvent) { event.preventDefault(); if (stageForm.stageId) void perform('stage', () => changeBatchStage(batch.batchId, { ...stageForm, notes: stageForm.notes || undefined })) }
+  function batchDeath(event: FormEvent) { event.preventDefault(); if (batchMortality.mortalityReasonId) void perform('batch-mortality', () => recordBatchMortality(batch.batchId, { ...batchMortality, notes: batchMortality.notes || undefined })) }
+  function plantDeath(event: FormEvent) { event.preventDefault(); if (plantMortality.plantId && plantMortality.mortalityReasonId) void perform('plant-mortality', () => recordPlantMortality(batch.batchId, plantMortality.plantId, { mortalityDate: plantMortality.mortalityDate, mortalityReasonId: plantMortality.mortalityReasonId, notes: plantMortality.notes || undefined })) }
+  function remove() { if (window.confirm('Mark this batch as removed? This is a historical status change and does not delete data.')) void perform('remove', () => removeBatch(batch.batchId, { removedDate })) }
+  if (batch.status !== 'Active') return <section className="batch-details-section"><h2>Actions</h2><p>This batch is removed and its historical data remains available for review.</p></section>
+  return <section className="batch-details-section" aria-labelledby="batch-actions-title"><h2 id="batch-actions-title">Actions</h2><p className="helper-text">All actions use active stages and mortality reasons configured for this batch.</p><FormError error={actionError} /><div className="action-grid">
+    <form className="form-grid" onSubmit={stageChange}><h3>Change stage</h3><label>New stage<select required value={stageForm.stageId} onChange={(event) => setStageForm({ ...stageForm, stageId: event.target.value })}>{availableStages.length === 0 ? <option value="">No alternative active stages</option> : availableStages.map((stage) => <option key={stage.id} value={stage.id}>{stage.displayOrder} — {stage.name}</option>)}</select></label><label>Effective date<input required type="date" value={stageForm.effectiveDate} onChange={(event) => setStageForm({ ...stageForm, effectiveDate: event.target.value })} /></label><label>Notes<input value={stageForm.notes} onChange={(event) => setStageForm({ ...stageForm, notes: event.target.value })} /></label><button className="button button-secondary" disabled={!stageForm.stageId || submitting === 'stage'}>{submitting === 'stage' ? 'Saving…' : 'Change stage'}</button></form>
+    {!batch.individualTrackingEnabled && <form className="form-grid" onSubmit={batchDeath}><h3>Record batch mortality</h3><label>Quantity<input required type="number" min="1" max={batch.alivePlantCount} value={batchMortality.quantity} onChange={(event) => setBatchMortality({ ...batchMortality, quantity: Number(event.target.value) })} /></label><label>Reason<select required value={batchMortality.mortalityReasonId} onChange={(event) => setBatchMortality({ ...batchMortality, mortalityReasonId: event.target.value })}>{reasons.length === 0 ? <option value="">No active reasons available</option> : reasons.map((reason) => <option key={reason.id} value={reason.id}>{reason.name}</option>)}</select></label><label>Mortality date<input required type="date" value={batchMortality.mortalityDate} onChange={(event) => setBatchMortality({ ...batchMortality, mortalityDate: event.target.value })} /></label><label>Notes<input value={batchMortality.notes} onChange={(event) => setBatchMortality({ ...batchMortality, notes: event.target.value })} /></label><button className="button button-secondary" disabled={!batchMortality.mortalityReasonId || batch.alivePlantCount === 0 || submitting === 'batch-mortality'}>{submitting === 'batch-mortality' ? 'Saving…' : 'Record mortality'}</button></form>}
+    {batch.individualTrackingEnabled && <form className="form-grid" onSubmit={plantDeath}><h3>Record plant mortality</h3><label>Plant<select required value={plantMortality.plantId} onChange={(event) => setPlantMortality({ ...plantMortality, plantId: event.target.value })}>{activePlants.length === 0 ? <option value="">No active plants available</option> : activePlants.map((plant) => <option key={plant.plantId} value={plant.plantId}>{plant.plantCode} (#{plant.plantNumber})</option>)}</select></label><label>Reason<select required value={plantMortality.mortalityReasonId} onChange={(event) => setPlantMortality({ ...plantMortality, mortalityReasonId: event.target.value })}>{reasons.length === 0 ? <option value="">No active reasons available</option> : reasons.map((reason) => <option key={reason.id} value={reason.id}>{reason.name}</option>)}</select></label><label>Mortality date<input required type="date" value={plantMortality.mortalityDate} onChange={(event) => setPlantMortality({ ...plantMortality, mortalityDate: event.target.value })} /></label><label>Notes<input value={plantMortality.notes} onChange={(event) => setPlantMortality({ ...plantMortality, notes: event.target.value })} /></label><button className="button button-secondary" disabled={!plantMortality.plantId || !plantMortality.mortalityReasonId || submitting === 'plant-mortality'}>{submitting === 'plant-mortality' ? 'Saving…' : 'Record mortality'}</button></form>}
+    <form className="form-grid removal-form" onSubmit={(event) => { event.preventDefault(); remove() }}><h3>Remove batch</h3><label>Removal date<input required type="date" value={removedDate} onChange={(event) => setRemovedDate(event.target.value)} /></label><p className="helper-text">Removal preserves the batch and its history; it does not delete data.</p><button className="button button-danger" disabled={submitting === 'remove'}>{submitting === 'remove' ? 'Removing…' : 'Mark as removed'}</button></form>
+  </div></section>
 }
 
-function DetailSection({ title, children }: { title: string, children: React.ReactNode }) {
-  return <section className="batch-details-section"><h2>{title}</h2>{children}</section>
-}
-
-function date(value: string | null): React.ReactNode {
-  return value ? <time dateTime={value}>{formatDateOnly(value)}</time> : 'Not recorded'
-}
-
-function BatchDetailsContent({ batch }: { batch: BatchDetails }) {
-  return <>
-    <div className="batch-details-header">
-      <div><Link className="text-link back-link" to="/batches">Back to Batches</Link><h1 id="batch-details-title">{batch.batchCode}</h1></div>
-      <span className={`status-badge status-badge-${batch.status.toLowerCase()}`}>{batch.status}</span>
-    </div>
-    <DetailSection title="Overview"><dl className="batch-details-grid">
-      <DetailRow label="Farm">{batch.farmName}</DetailRow><DetailRow label="Crop">{batch.cropName}</DetailRow>
-      <DetailRow label="Variety">{batch.varietyName}</DetailRow><DetailRow label="Location">{batch.locationName ?? 'Not assigned'}</DetailRow>
-      <DetailRow label="Planting date">{date(batch.plantingDate)}</DetailRow><DetailRow label="Current stage">{batch.currentStageName}</DetailRow>
-    </dl></DetailSection>
-    <DetailSection title="Production"><dl className="batch-details-grid">
-      <DetailRow label="Initial plants">{batch.initialPlantCount}</DetailRow><DetailRow label="Alive plants">{batch.alivePlantCount}</DetailRow>
-      <DetailRow label="Dead plants">{batch.deadPlantCount}</DetailRow><DetailRow label="Survival rate">{formatSurvivalRate(batch.survivalRate)}</DetailRow>
-      <DetailRow label="Individual tracking">{batch.individualTrackingEnabled ? 'Enabled' : 'Not enabled'}</DetailRow>
-    </dl></DetailSection>
-    <DetailSection title="Lifecycle"><dl className="batch-details-grid">
-      <DetailRow label="Removed date">{date(batch.removedDate)}</DetailRow><DetailRow label="Notes">{batch.notes ?? 'No notes recorded.'}</DetailRow>
-    </dl></DetailSection>
-    <DetailSection title="Individual plants">
-      {!batch.individualTrackingEnabled && <p>Individual plant tracking is not enabled for this batch.</p>}
-      {batch.individualTrackingEnabled && batch.plants.length === 0 && <p>No individual plants are available.</p>}
-      {batch.individualTrackingEnabled && batch.plants.length > 0 && <div className="batch-table-wrapper"><table className="batch-table"><thead><tr><th scope="col">Number</th><th scope="col">Plant code</th><th scope="col">Status</th><th scope="col">Notes</th></tr></thead><tbody>
-        {batch.plants.map((plant) => <tr key={plant.plantId}><td>{plant.plantNumber}</td><td>{plant.plantCode}</td><td>{plant.status}</td><td>{plant.notes ?? '—'}</td></tr>)}
-      </tbody></table></div>}
-    </DetailSection>
-    <DetailSection title="Mortality history">
-      {batch.mortalityRecords.length === 0 && <p>No mortality recorded.</p>}
-      {batch.mortalityRecords.length > 0 && <div className="batch-table-wrapper"><table className="batch-table"><thead><tr><th scope="col">Date</th><th scope="col">Quantity</th><th scope="col">Plant reference</th><th scope="col">Reason reference</th><th scope="col">Notes</th></tr></thead><tbody>
-        {batch.mortalityRecords.map((record) => <tr key={record.mortalityRecordId}><td>{date(record.mortalityDate)}</td><td>{record.quantity}</td><td>{record.plantId ?? 'Batch-level'}</td><td>{record.reasonId}</td><td>{record.notes ?? '—'}</td></tr>)}
-      </tbody></table></div>}
-    </DetailSection>
-    <DetailSection title="Stage history">
-      {batch.stageHistory.length === 0 && <p>No stage history recorded.</p>}
-      {batch.stageHistory.length > 0 && <div className="batch-table-wrapper"><table className="batch-table"><thead><tr><th scope="col">Stage</th><th scope="col">Effective date</th><th scope="col">Notes</th></tr></thead><tbody>
-        {batch.stageHistory.map((entry) => <tr key={entry.historyId}><td>{entry.stageName ?? 'Stage unavailable'}</td><td>{date(entry.effectiveDate)}</td><td>{entry.notes ?? '—'}</td></tr>)}
-      </tbody></table></div>}
-    </DetailSection>
-  </>
-}
+function BatchDetailsContent({ batch, reasonNames, onChanged }: { batch: BatchDetails, reasonNames: Map<string, string>, onChanged: () => void }) { return <>
+  <div className="batch-details-header"><div><Link className="text-link back-link" to="/batches">Back to Batches</Link><h1 id="batch-details-title">{batch.batchCode}</h1></div><span className={`status-badge status-badge-${batch.status.toLowerCase()}`}>{batch.status}</span></div>
+  <DetailSection title="Overview"><dl className="batch-details-grid"><DetailRow label="Farm">{batch.farmName}</DetailRow><DetailRow label="Crop">{batch.cropName}</DetailRow><DetailRow label="Variety">{batch.varietyName}</DetailRow><DetailRow label="Location">{batch.locationName ?? 'Not assigned'}</DetailRow><DetailRow label="Planting date">{date(batch.plantingDate)}</DetailRow><DetailRow label="Current stage">{batch.currentStageName}</DetailRow></dl></DetailSection>
+  <DetailSection title="Production"><dl className="batch-details-grid"><DetailRow label="Initial plants">{batch.initialPlantCount}</DetailRow><DetailRow label="Alive plants">{batch.alivePlantCount}</DetailRow><DetailRow label="Dead plants">{batch.deadPlantCount}</DetailRow><DetailRow label="Survival rate">{formatSurvivalRate(batch.survivalRate)}</DetailRow><DetailRow label="Individual tracking">{batch.individualTrackingEnabled ? 'Enabled' : 'Not enabled'}</DetailRow></dl></DetailSection>
+  <DetailSection title="Lifecycle"><dl className="batch-details-grid"><DetailRow label="Removed date">{date(batch.removedDate)}</DetailRow><DetailRow label="Notes">{batch.notes ?? 'No notes recorded.'}</DetailRow></dl></DetailSection>
+  <DetailSection title="Individual plants">{!batch.individualTrackingEnabled && <p>Individual plant tracking is not enabled for this batch.</p>}{batch.individualTrackingEnabled && batch.plants.length === 0 && <p>No individual plants are available.</p>}{batch.individualTrackingEnabled && batch.plants.length > 0 && <div className="batch-table-wrapper"><table className="batch-table"><thead><tr><th scope="col">Number</th><th scope="col">Plant code</th><th scope="col">Status</th><th scope="col">Notes</th></tr></thead><tbody>{batch.plants.map((plant) => <tr key={plant.plantId}><td>{plant.plantNumber}</td><td>{plant.plantCode}</td><td>{plant.status}</td><td>{plant.notes ?? '—'}</td></tr>)}</tbody></table></div>}</DetailSection>
+  <DetailSection title="Mortality history">{batch.mortalityRecords.length === 0 && <p>No mortality recorded.</p>}{batch.mortalityRecords.length > 0 && <div className="batch-table-wrapper"><table className="batch-table"><thead><tr><th scope="col">Date</th><th scope="col">Quantity</th><th scope="col">Plant reference</th><th scope="col">Reason</th><th scope="col">Notes</th></tr></thead><tbody>{batch.mortalityRecords.map((record) => <tr key={record.mortalityRecordId}><td>{date(record.mortalityDate)}</td><td>{record.quantity}</td><td>{record.plantId ?? 'Batch-level'}</td><td>{reasonNames.get(record.reasonId) ?? 'Unknown reason'}</td><td>{record.notes ?? '—'}</td></tr>)}</tbody></table></div>}</DetailSection>
+  <DetailSection title="Stage history">{batch.stageHistory.length === 0 && <p>No stage history recorded.</p>}{batch.stageHistory.length > 0 && <div className="batch-table-wrapper"><table className="batch-table"><thead><tr><th scope="col">Stage</th><th scope="col">Effective date</th><th scope="col">Notes</th></tr></thead><tbody>{batch.stageHistory.map((entry) => <tr key={entry.historyId}><td>{entry.stageName ?? 'Stage unavailable'}</td><td>{date(entry.effectiveDate)}</td><td>{entry.notes ?? '—'}</td></tr>)}</tbody></table></div>}</DetailSection>
+  <BatchActions batch={batch} onChanged={onChanged} />
+</> }
 
 export function BatchDetailsPage() {
-  const { batchId } = useParams()
-  const [batch, setBatch] = useState<BatchDetails>()
-  const [error, setError] = useState<string>()
-  const [notFound, setNotFound] = useState(false)
-  const [requestVersion, setRequestVersion] = useState(0)
-  const isValidId = batchId !== undefined && guidPattern.test(batchId)
-
-  useEffect(() => {
-    if (!isValidId || !batchId) { setNotFound(true); return }
-    const controller = new AbortController()
-    setBatch(undefined); setError(undefined); setNotFound(false)
-    void getBatchDetails(batchId, controller.signal)
-      .then(setBatch)
-      .catch((requestError: unknown) => {
-        if (controller.signal.aborted) return
-        if (requestError instanceof ApiError && requestError.status === 404) setNotFound(true)
-        else setError(requestError instanceof ApiError ? requestError.detail : 'Please check your connection and try again.')
-      })
-    return () => controller.abort()
-  }, [batchId, isValidId, requestVersion])
-
+  const { batchId } = useParams(); const [batch, setBatch] = useState<BatchDetails>(); const [error, setError] = useState<string>(); const [notFound, setNotFound] = useState(false); const [requestVersion, setRequestVersion] = useState(0); const [reasonNames, setReasonNames] = useState<Map<string, string>>(new Map()); const isValidId = batchId !== undefined && guidPattern.test(batchId)
+  useEffect(() => { if (!isValidId || !batchId) { setNotFound(true); return }; const controller = new AbortController(); setBatch(undefined); setError(undefined); setNotFound(false); void getBatchDetails(batchId, controller.signal).then(setBatch).catch((requestError: unknown) => { if (controller.signal.aborted) return; if (requestError instanceof ApiError && requestError.status === 404) setNotFound(true); else setError(requestError instanceof ApiError ? requestError.detail : 'Please check your connection and try again.') }); return () => controller.abort() }, [batchId, isValidId, requestVersion])
+  useEffect(() => { if (!batch) return; const controller = new AbortController(); void masterDataApi.listMortalityReasons(batch.farmId, true, controller.signal).then((reasons) => setReasonNames(new Map(reasons.map((reason) => [reason.id, reason.name])))).catch(() => { if (!controller.signal.aborted) setReasonNames(new Map()) }); return () => controller.abort() }, [batch])
   if (notFound) return <section className="page batch-details" aria-labelledby="batch-not-found-title"><h1 id="batch-not-found-title">Batch not found.</h1><p>The requested batch is unavailable.</p><Link className="text-link" to="/batches">Back to Batches</Link></section>
   if (error) return <section className="page batch-details" aria-labelledby="batch-details-title"><h1 id="batch-details-title">Batch details</h1><BatchErrorState message={error} onRetry={() => setRequestVersion((version) => version + 1)} /></section>
   if (!batch) return <section className="page batch-details" aria-labelledby="batch-details-title"><h1 id="batch-details-title">Batch details</h1><p className="batch-state" role="status">Loading batch details…</p></section>
-  return <section className="page batch-details" aria-labelledby="batch-details-title"><BatchDetailsContent batch={batch} /></section>
+  return <section className="page batch-details" aria-labelledby="batch-details-title"><BatchDetailsContent batch={batch} reasonNames={reasonNames} onChanged={() => setRequestVersion((version) => version + 1)} /></section>
 }
