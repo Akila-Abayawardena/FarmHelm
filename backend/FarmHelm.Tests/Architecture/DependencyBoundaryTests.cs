@@ -40,7 +40,7 @@ public sealed class DependencyBoundaryTests
             "FarmHelm.Infrastructure.csproj");
         var projectReferences = XDocument.Load(projectFile)
             .Descendants("ProjectReference")
-            .Select(reference => Path.GetFileNameWithoutExtension(reference.Attribute("Include")?.Value ?? string.Empty) ?? string.Empty)
+            .Select(GetProjectReferenceName)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
@@ -57,7 +57,7 @@ public sealed class DependencyBoundaryTests
             "FarmHelm.Application.csproj");
         var projectReferences = XDocument.Load(projectFile)
             .Descendants("ProjectReference")
-            .Select(reference => Path.GetFileNameWithoutExtension(reference.Attribute("Include")?.Value ?? string.Empty) ?? string.Empty)
+            .Select(GetProjectReferenceName)
             .ToArray();
         var references = typeof(CreateFarmHandler).Assembly
             .GetReferencedAssemblies()
@@ -123,5 +123,15 @@ public sealed class DependencyBoundaryTests
         }
 
         throw new DirectoryNotFoundException("Could not locate the FarmHelm repository root.");
+    }
+
+    private static string GetProjectReferenceName(XElement reference)
+    {
+        var include = reference.Attribute("Include")?.Value ?? string.Empty;
+        var normalized = include
+            .Replace('\\', Path.DirectorySeparatorChar)
+            .Replace('/', Path.DirectorySeparatorChar);
+
+        return Path.GetFileNameWithoutExtension(normalized) ?? string.Empty;
     }
 }
