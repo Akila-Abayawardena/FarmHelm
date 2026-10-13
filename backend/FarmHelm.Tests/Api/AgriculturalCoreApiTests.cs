@@ -2,9 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FarmHelm.Api.Contracts.Batches;
+using FarmHelm.Api.Contracts.Crops;
 using FarmHelm.Api.Contracts.Farms;
 using FarmHelm.Application.Batches;
 using FarmHelm.Application.Common.Exceptions;
+using FarmHelm.Application.MasterData;
 using FarmHelm.Domain.Crops;
 
 namespace FarmHelm.Tests.Api;
@@ -80,6 +82,63 @@ public sealed class AgriculturalCoreApiTests
 
         await AssertProblemAsync(inactiveVariety, HttpStatusCode.BadRequest);
         await AssertProblemAsync(inactiveStage, HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task MasterDataReadEndpointsMapResponsesAndForwardIncludeInactive()
+    {
+        using var factory = new FarmHelmApiFactory();
+        using var client = factory.CreateClient();
+        var farmId = Guid.NewGuid();
+        var cropId = Guid.NewGuid();
+        factory.MasterDataReads.FarmIds.Add(farmId);
+        factory.MasterDataReads.CropIds.Add(cropId);
+        factory.MasterDataReads.Farms = [new FarmReadModel(farmId, "FARM-0001", "Farm", "LKR", "Asia/Colombo", null)];
+        factory.MasterDataReads.Locations = [new FarmLocationReadModel(Guid.NewGuid(), farmId, "LOC-0001", "Field", null, true)];
+        factory.MasterDataReads.Crops = [new CropReadModel(cropId, farmId, "CROP-0001", "Pepper", null, null, true)];
+        factory.MasterDataReads.Reasons = [new MortalityReasonReadModel(Guid.NewGuid(), farmId, "Disease", 1, true)];
+        factory.MasterDataReads.Varieties = [new VarietyReadModel(Guid.NewGuid(), cropId, "VAR-0001", "Variety", null, true)];
+        factory.MasterDataReads.Stages = [new CropStageReadModel(Guid.NewGuid(), cropId, "Vegetative", 1, true)];
+
+        var farms = await client.GetFromJsonAsync<IReadOnlyList<FarmReadResponse>>("/api/farms");
+        var locations = await client.GetAsync($"/api/farms/{farmId}/locations?includeInactive=true");
+        Assert.Equal((farmId, true), factory.MasterDataReads.LastFarmScopedRequest);
+        var crops = await client.GetAsync($"/api/farms/{farmId}/crops?includeInactive=true");
+        Assert.Equal((farmId, true), factory.MasterDataReads.LastFarmScopedRequest);
+        var reasons = await client.GetAsync($"/api/farms/{farmId}/mortality-reasons?includeInactive=true");
+        Assert.Equal((farmId, true), factory.MasterDataReads.LastFarmScopedRequest);
+        var varieties = await client.GetAsync($"/api/crops/{cropId}/varieties?includeInactive=true");
+        Assert.Equal((cropId, true), factory.MasterDataReads.LastCropScopedRequest);
+        var stages = await client.GetAsync($"/api/crops/{cropId}/stages?includeInactive=true");
+
+        Assert.Equal(farmId, Assert.Single(farms!).Id);
+        Assert.Equal(HttpStatusCode.OK, locations.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, crops.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, reasons.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, varieties.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, stages.StatusCode);
+        Assert.Equal((cropId, true), factory.MasterDataReads.LastCropScopedRequest);
+        Assert.Equal("LOC-0001", Assert.Single((await locations.Content.ReadFromJsonAsync<IReadOnlyList<FarmLocationReadResponse>>())!).LocationCode);
+        Assert.Equal("CROP-0001", Assert.Single((await crops.Content.ReadFromJsonAsync<IReadOnlyList<CropReadResponse>>())!).CropCode);
+        Assert.Equal("Disease", Assert.Single((await reasons.Content.ReadFromJsonAsync<IReadOnlyList<MortalityReasonReadResponse>>())!).Name);
+        Assert.Equal("VAR-0001", Assert.Single((await varieties.Content.ReadFromJsonAsync<IReadOnlyList<VarietyReadResponse>>())!).VarietyCode);
+        Assert.Equal("Vegetative", Assert.Single((await stages.Content.ReadFromJsonAsync<IReadOnlyList<CropStageReadResponse>>())!).Name);
+    }
+
+    [Fact]
+    public async Task MasterDataReadEndpointsReturnNotFoundForMissingParentsAndBadRequestForInvalidIncludeInactive()
+    {
+        using var factory = new FarmHelmApiFactory();
+        using var client = factory.CreateClient();
+        var farmId = Guid.NewGuid();
+        var cropId = Guid.NewGuid();
+
+        await AssertProblemAsync(await client.GetAsync($"/api/farms/{farmId}/locations"), HttpStatusCode.NotFound);
+        await AssertProblemAsync(await client.GetAsync($"/api/farms/{farmId}/crops"), HttpStatusCode.NotFound);
+        await AssertProblemAsync(await client.GetAsync($"/api/farms/{farmId}/mortality-reasons"), HttpStatusCode.NotFound);
+        await AssertProblemAsync(await client.GetAsync($"/api/crops/{cropId}/varieties"), HttpStatusCode.NotFound);
+        await AssertProblemAsync(await client.GetAsync($"/api/crops/{cropId}/stages"), HttpStatusCode.NotFound);
+        await AssertProblemAsync(await client.GetAsync($"/api/farms/{farmId}/locations?includeInactive=invalid"), HttpStatusCode.BadRequest);
     }
 
     [Fact]
